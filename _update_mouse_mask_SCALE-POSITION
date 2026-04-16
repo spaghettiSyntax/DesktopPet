@@ -1,0 +1,64 @@
+## OLD FUNCTION
+#func _update_mouse_mask():
+#	var anim = $AnimatedSprite2D
+	
+#	# 1. Get the raw image data of the CURRENT frame
+#	var texture = anim.sprite_frames.get_frame_texture(anim.animation, anim.frame)
+#	var image = texture.get_image()
+	
+#	# If the sprite is visually flipped, the raw image data ISN'T.
+#	# We have to manually flip the data to match what the user sees.
+#	if anim.flip_h:
+#		image.flip_x()
+		
+#	# 2. Create the Bitmap (The Map of Solid Pixels)
+#	var bitmap = BitMap.new()
+#	bitmap.create_from_image_alpha(image)
+	
+#	# 3. Create the Polygons (The Shape)
+#	# 0.1 means we ignore fully transparent pixels
+#	var polygons = bitmap.opaque_to_polygons(Rect2(Vector2.ZERO, texture.get_size()), 0.1)
+	
+#	# 4. Apply it to the OS Window
+#	DisplayServer.window_set_mouse_passthrough(polygons)
+
+## NEW FUNCTION 
+func _update_mouse_mask():
+	var anim = $AnimatedSprite2D
+	
+	# 1. Get the raw image data of the CURRENT frame
+	var texture = anim.sprite_frames.get_frame_texture(anim.animation, anim.frame)
+	var image = texture.get_image()
+	
+	# If the sprite is visually flipped, the raw image data ISN'T.
+	# We have to manually flip the data to match what the user sees.
+	if anim.flip_h:
+		image.flip_x()
+		
+	# 2. Create the Bitmap (The Map of Solid Pixels)
+	var bitmap = BitMap.new()
+	bitmap.create_from_image_alpha(image)
+	
+	# 3. Create the Polygons (The Shape)
+	# 0.1 means we ignore fully transparent pixels
+	var polygons = bitmap.opaque_to_polygons(Rect2(Vector2.ZERO, texture.get_size()), 0.1)
+	
+	# --- NEW FIX: Apply the Node's scale and position to the raw math ---
+	var final_polygons = []
+	for poly in polygons:
+		var new_poly = PackedVector2Array()
+		for point in poly:
+			# Account for the sprite's center point
+			var offset = Vector2.ZERO
+			if anim.centered:
+				offset = texture.get_size() / 2.0
+				
+			# Apply the scale and the position on screen
+			var scaled_point = (point - offset) * anim.scale
+			var final_point = scaled_point + anim.position
+			new_poly.append(final_point)
+			
+		final_polygons.append(new_poly)
+	
+	# 4. Apply the adjusted polygons to the OS Window
+	DisplayServer.window_set_mouse_passthrough(final_polygons)
